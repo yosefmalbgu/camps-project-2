@@ -1,0 +1,210 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+
+	<title>Camps - project 2 | CARTO </title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+	
+	
+	<link rel="stylesheet" href="css/leaflet.css">
+	
+    <script src="js/leaflet.js"></script>
+    <script src="js/jquery.js"></script>
+    <style>
+	body {
+		padding: 0;
+		margin: 0;
+	}
+	html, body, #map {
+		height: 100%;
+		width: 100%;
+	}
+	.popup {
+		text-align: center;
+	}
+		
+	
+	.legend {
+		line-height: 15px;
+		padding: 6px 8px;
+		background-color: rgba(255,255,255,0.8);
+		border-style: solid;
+	}
+	.legend i {
+		width: px;
+		height: 18px;
+		float: left;
+		margin-right: 15px;
+		margin-left: 15px;
+		opacity: 0.8;
+		
+	}
+	
+
+		
+	site_sel {
+	padding: 6px 8px;
+	font: 14px/16px Arial, Helvetica, sans-serif;
+	background-color: rgba(255,255,255,0.8);
+	box-shadow: 0 0 15px rgba(1,0,0,0.2);
+	border-radius: 5px;
+		}
+
+		
+	.b_circle {
+	border-radius: 100%;
+	width: 20px;
+	height: 10px;
+	margin-top: 0px;
+	color: blue;}
+
+	.r_circle {
+	border-radius: 100%;
+	width: 20px;
+	height: 10px;
+	margin-top: 0px;
+	color: red;}
+	<!-- create circles properties for the legend -->	
+
+    </style>
+</head>
+<body>
+	<div id="map"></div>
+<script>
+// add background map
+var map = L.map("map").setView([32, 35], 9);
+var groupLayer = L.layerGroup().addTo(map);
+
+L.tileLayer("https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png", {
+	attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attribution/">CartoDB</a>',
+	subdomains: "abcd",
+	maxZoom: 19
+}).addTo(map);
+
+//
+function style(feature) {
+    return {
+        fillColor: getColor(feature.properties.rooms_for_rent),
+        radius: 10,
+        weight: 0.5,
+        opacity: 0.5,
+        color: "black",
+        fillOpacity: 0.7
+    };
+}
+
+//create function to set symbol if the site have room for rent by field.
+function getColor(d) {
+    if(d  == "Yes") return "blue"; else
+	
+        return "red";
+					}
+// load geoJSON from CARTO with SQL query	
+var cartoUserName = "yosefmalbgu";
+var url = "https://" + cartoUserName + 
+    ".carto.com/api/v2/sql?format=GeoJSON&q=";
+	
+var sqlQuery = "SELECT the_geom ,name, fulldescription, phone ,rooms_for_rent,illumination FROM camp_eng where rooms_for_rent = 'Yes'";
+
+
+
+
+//load geojson of camp site.
+$.getJSON(url + sqlQuery, function(data) {
+    L.geoJSON(data, {
+	style: style,
+	onEachFeature: function(feature, layer) {
+	layer.bindPopup(
+		'<div class="popup">' + 
+		'<h2>' + feature.properties.name + '</h2>' + '<br>' + 
+		'<b>' + feature.properties.fulldescription + '</b>' + 
+		'<br>'+ '<br>'+	"phone:"+ '<br>'+
+		'<b>' + feature.properties.phone + '</b>'+
+
+		                '</div>'
+            );
+        },
+        pointToLayer: function(geoJsonPoint, latlng) {
+            return L.circleMarker(latlng);
+        },
+    }).addTo(groupLayer);
+});
+
+//create legend box.
+var legend = L.control({position: 'bottomright'});
+
+
+legend.onAdd = function(map) {
+    var div = L.DomUtil.create("div", "legend"); 
+
+    div.innerHTML = '<h2>Campgrounds in Israels</h2><p><i class="r_circle" style= "background: red"></i>  - Campground without accommodation</p><p><p><i class="b_circle" style= "background: blue"></i> - Campground with accommodation</p><p>click on point for information on the site.</p>choose sites with illumination or without from the top left corner box. <br>(or choose to whatch all site). </p><p>The data were taken from : <a href="https://data.gov.il/dataset/camping">https://data.gov.il/dataset/camping</a></p><p>created by yosef malka</p>'
+    return div;
+};
+
+legend.addTo(map);
+
+// Add dropdown menu
+var dropdown = L.control({position: "topleft"});
+dropdown.onAdd = function(map) {
+    var div = L.DomUtil.create("div", "dropdown");
+    div.innerHTML = 
+        '<select id="site_sel">' +
+            '<option value="(\'Yes\')">' +
+                "camp site with illumination" +
+            '</option>' +
+            '<option value="(\'No\')">' +
+                'camp site without illumination' +
+            '</option>' +
+            '<option value="(\'Yes\',\'No\')">' +
+                'show all sites' +
+            '</option>' 			
+			
+        '</select>';
+    return div;
+};
+dropdown.addTo(map);
+
+
+// Reload points on selection change
+$("#site_sel").on("change", function() {
+    groupLayer.clearLayers();
+    var valueSelected = $("#site_sel").val();
+    var sqlQuery3 = "SELECT the_geom ,name, fulldescription, phone ,Rooms_for_Rent,illumination FROM camp_eng where illumination in "+  valueSelected ;
+
+	
+	
+	
+        "SELECT name_lat, geometry AS geom FROM plants " + 
+        "WHERE name_lat = '" + valueSelected + "'";
+    $.getJSON(url + sqlQuery3, function(data) {
+        L.geoJSON(data, {
+		style: style,
+            onEachFeature: function(feature, layer) {
+                layer.bindPopup(
+		'<div class="popup">' + 
+		'<h2>' + feature.properties.name + '</h2>' + '<br>' + 
+		'<b>' + feature.properties.fulldescription + '</b>' + 
+		'<br>'+ '<br>'+	"phone:"+ '<br>'+
+		'<b>' + feature.properties.phone + '</b>'+
+
+   		  '</div>'
+            );
+        },
+        pointToLayer: function(geoJsonPoint, latlng) {
+            return L.circleMarker(latlng);
+        },
+    }).addTo(groupLayer);
+
+
+	
+});
+});
+
+
+
+
+
+	</script>
+</body>
+</html>
